@@ -20,8 +20,32 @@ def cancel_scan(*args):
     Dummy SIGINT hanlder which stops target list processing.
     """
     STOPSCAN.set()
-    raise KeyboardInterrupt('Scan is terminated by user request')
 
+
+class ScanExecutor(th.Thread):
+    def __init__(self, target, profile, timeout, **kwargs):
+        super(self.__class__, self).__init__(**kwargs)
+	self.target = target
+	self.profile = profile
+	self.timeout = timeout
+	self.worker = None
+	self.scanner = None
+
+    def __call__(self):
+	self.worker = mp.Process(target=self.start_worker)
+	self.worker.start()
+	self.worker.join()
+
+    def start_worker(self):
+        """Run w3af scan in child process."""
+	logger.debug('Scan started: %s' % self.target)
+
+    def stop_scanner(self):
+	"""Stop w3af scanner."""
+        if self.scanner.status.is_running():
+            self.scanner.stop()
+            logger.info('Scan of %s is stopped', target)
+    
 
 def execute_scan(target, profile, timeout):
     """
@@ -35,7 +59,7 @@ def execute_scan(target, profile, timeout):
             scanner.stop()
             logger.info('Stop scan of %s because of configured timeout',
                         target)
-
+    
     from w3af.core.controllers.w3afCore import w3afCore
     from w3af.core.data.kb.knowledge_base import kb
     from w3af.core.controllers.exceptions import BaseFrameworkException
