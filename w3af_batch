@@ -25,27 +25,51 @@ def cancel_scan(*args):
 class ScanExecutor(th.Thread):
     def __init__(self, target, profile, timeout, **kwargs):
         super(self.__class__, self).__init__(**kwargs)
-	self.target = target
-	self.profile = profile
-	self.timeout = timeout
-	self.worker = None
-	self.scanner = None
+        self.target = target
+        self.profile = profile
+        self.timeout = timeout
+        self.done = mp.Event()
+        self.worker = None
 
-    def __call__(self):
-	self.worker = mp.Process(target=self.start_worker)
-	self.worker.start()
-	self.worker.join()
+    def run(self):
+        """Start w3af scan in child process."""
+        self.worker = mp.Process(target=self.start_worker)
+        self.worker.start()
+        self.worker.join()
+
+    def started(self):
+        """Report if worker was started."""
+        if self.worker.is_alive():
+            return True
+        elif self.done:
+            return True
+        else: 
+            return False
 
     def start_worker(self):
-        """Run w3af scan in child process."""
-	logger.debug('Scan started: %s' % self.target)
+        """Run w3af scan."""
+        from w3af.core.controllers.w3afCore import w3afCore
+        from w3af.core.data.kb.knowledge_base import kb
+        from w3af.core.controllers.exceptions import BaseFrameworkException
+
+        try:
+            self.scanner = w3afCore()
+            self.scanner.profiles.use_profile(self.profile)
+            option_list = self.scanner.target.get_options()
+            option_list['target'].set_value(self.target)
+            self.scanner.target.set_options(option_list)
+            self.scanner.plugins.init_plugins()
+        except BaseFrameworkException, exc:
+            logger.warn('Failed to initialize scanner: %s' % exc)
+            return False
+        return True
 
     def stop_scanner(self):
-	"""Stop w3af scanner."""
+        """Stop w3af scanner."""
         if self.scanner.status.is_running():
             self.scanner.stop()
-            logger.info('Scan of %s is stopped', target)
-    
+            logger.info('Scan of %s is stopped', self.target)
+
 
 def execute_scan(target, profile, timeout):
     """
