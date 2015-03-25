@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
+# vim: ft=python
 
 
 import logging
@@ -28,25 +29,17 @@ class ScanExecutor(th.Thread):
         self.target = target
         self.profile = profile
         self.timeout = timeout
-        self.done = mp.Event()
         self.worker = None
+        self.success = mp.Event()
+	self.failure = mp.Event()
 
     def run(self):
         """Start w3af scan in child process."""
-        self.worker = mp.Process(target=self.start_worker)
+        self.worker = mp.Process(target=self.run_scan)
         self.worker.start()
         self.worker.join()
 
-    def started(self):
-        """Report if worker was started."""
-	if self.worker is not None:
-	    if self.worker.is_alive():
-		return True
-	    elif self.done:
-		return True
-	return False
-
-    def start_worker(self):
+    def run_scan(self):
         """Run w3af scan."""
         from w3af.core.controllers.w3afCore import w3afCore
         from w3af.core.data.kb.knowledge_base import kb
@@ -60,9 +53,14 @@ class ScanExecutor(th.Thread):
             self.scanner.target.set_options(option_list)
             self.scanner.plugins.init_plugins()
         except BaseFrameworkException, exc:
-            logger.warn('Failed to initialize scanner: %s' % exc)
-            return False
-        return True
+	    return self.failure.set()
+
+	try:
+	    self.scanner.start()
+        except BaseFrameworkException, exc:
+	    return self.failure.set()
+
+        return self.success.set()
 
     def stop_scanner(self):
         """Stop w3af scanner."""

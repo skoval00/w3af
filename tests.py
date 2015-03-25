@@ -1,52 +1,86 @@
 """Tests for w3af_batch."""
 
+import sys
+import imp
 import unittest
 import mock
 from mock import patch
 
-
+from w3af.core.controllers.exceptions import BaseFrameworkException
 from w3af_batch import execute_scan
 from w3af_batch import ScanExecutor
 from w3af_batch import STOPSCAN
 
 
-class W3afCoreMock(mock.MagicMock):
-    """w3afCore mock."""
-    pass
-
-
-class ScanExecutorTest(unittest.TestCase):
-    """Tests for ScanExecutor class."""
+class ScanExecutorBaseTest(unittest.TestCase):
     target = 'target'
     profile = 'profile'
     timeout = 1
+    event_timeout = 1
 
     def setUp(self):
+        """Mock used w3af modules."""
+        w3afCore_module = imp.new_module('w3af.core.controllers.w3afCore')
+        from w3af.core.controllers.w3afCore import w3afCore
+        w3afCore_module.w3afCore = mock.MagicMock(spec=w3afCore)
+        self.setUpW3afCore(w3afCore_module.w3afCore)
+        sys.modules[w3afCore_module.__name__] = w3afCore_module
         self.executor = ScanExecutor(
             self.target, self.profile, self.timeout)
-
-    @patch('w3af.core.controllers.w3afCore.w3afCore', new=W3afCoreMock())
-    def test_child_started(self):
-        """Check if child was started."""
         self.executor.start()
-        self.assertTrue(self.executor.started())
 
-    @patch('w3af.core.controllers.w3afCore.w3afCore')
-    def test_w3af_exception(self, w3af_mock):
-        from w3af.core.controllers.exceptions import BaseFrameworkException
-        w3af_mock.side_effect = BaseFrameworkException('w3af error')
-        self.assertRaises(BaseFrameworkException, self.executor.start)
+    def setUpW3afCore(self, w3afCore):
+        pass
+
+    def tearDown(self):
+        del sys.modules['w3af.core.controllers.w3afCore']
 
 
-@patch('w3af.core.controllers.w3afCore.w3afCore')
-class W3afBatchTest(unittest.TestCase):
-    """Test for function bases w3af_batch."""
-    def test_framework_exception(self, w3af):
-        """Test if exception is raised in execute_scan."""
-        from w3af.core.controllers.exceptions import BaseFrameworkException
-        w3af.side_effect = BaseFrameworkException('w3af error')
-        try:
-            execute_scan('target', 'profile', 1)
-        except BaseFrameworkException:
-            pass
-        self.assertTrue(True)
+class W3afCoreSuccessTest(ScanExecutorBaseTest):
+    """Successful run of w3afCore scan."""
+
+    def test_success(self):
+        """Test successful run."""
+        self.assertTrue(self.executor.success.wait(self.event_timeout))
+        self.assertFalse(self.executor.failure.is_set())
+
+
+class W3afCoreInitExceptionTest(ScanExecutorBaseTest):
+    """Raise exception in w3afCore init."""
+
+    def setUpW3afCore(self, w3afCore):
+        w3afCore.side_effect = BaseFrameworkException('failure')
+
+    def test_w3af_init_failure(self):
+        self.assertTrue(self.executor.failure.wait(self.event_timeout))
+        self.assertFalse(self.executor.success.is_set())
+
+
+class W3afCoreStartExceptionTest(ScanExecutorBaseTest):
+    """Raise exception in w3afCore.start."""
+
+    def setUp(self):
+        w3afCore_module = imp.new_module('w3af.core.controllers.w3afCore')
+        from w3af.core.controllers.w3afCore import w3afCore
+        w3afCore_module.w3afCore = mock.MagicMock()
+        w3afCore_module.w3afCore.start = mock.MagicMock(
+            side_effect=BaseFrameworkException('failure'))
+        sys.modules[w3afCore_module.__name__] = w3afCore_module
+        self.executor = ScanExecutor(
+            self.target, self.profile, self.timeout)
+        self.executor.start()
+
+    def setUpW3afCore(self, w3afCore):
+        attrs = {'start.side_effect': BaseFrameworkException('failure')}
+        w3afCore.configure_mock(**attrs)
+
+    def test_w3af_start_failure(self):
+        self.assertTrue(self.executor.failure.wait(self.event_timeout))
+        self.assertFalse(self.executor.success.is_set())
+
+
+@unittest.skip('')
+class W3afCoreTimeoutTest(ScanExecutorBaseTest):
+    def test_timeout(self):
+        self.assertFalse(self.executor.success.is_set())
+        self.assertFalse(self.executor.failure.is_set())
