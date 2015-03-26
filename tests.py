@@ -77,10 +77,3 @@ class W3afCoreStartExceptionTest(ScanExecutorBaseTest):
     def test_w3af_start_failure(self):
         self.assertTrue(self.executor.failure.wait(self.event_timeout))
         self.assertFalse(self.executor.success.is_set())
-
-
-@unittest.skip('')
-class W3afCoreTimeoutTest(ScanExecutorBaseTest):
-    def test_timeout(self):
-        self.assertFalse(self.executor.success.is_set())
-        self.assertFalse(self.executor.failure.is_set())
