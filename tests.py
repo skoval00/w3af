@@ -61,7 +61,6 @@ class W3afCoreStartExceptionTest(ScanExecutorBaseTest):
 
     def setUp(self):
         w3afCore_module = imp.new_module('w3af.core.controllers.w3afCore')
-        from w3af.core.controllers.w3afCore import w3afCore
         w3afCore_module.w3afCore = mock.MagicMock()
         w3afCore_module.w3afCore.start = mock.MagicMock(
             side_effect=BaseFrameworkException('failure'))
