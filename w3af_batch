@@ -16,6 +16,23 @@ STOPSCAN = mp.Event()
 logger = logging.getLogger(__name__)
 
 
+class Executor(th.Thread):
+    def __init__(self, worker, args=()):
+	super(Executor, self).__init__()
+	self.worker = worker
+	self.args = args
+
+    def run(self):
+	self.process = mp.Process(target=self.worker,
+				  args=self.args)
+	self.process.start()
+	self.process.join()
+
+    @property
+    def success(self):
+	pass
+
+
 def cancel_scan(*args):
     """
     Dummy SIGINT hanlder which stops target list processing.
