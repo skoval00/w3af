@@ -87,15 +87,12 @@ class ExecutorTest(unittest.TestCase):
     """Docstring for ExecutorTest. """
     def setUp(self):
         def worker(queue, termination):
-            pass
+            queue.put(True)
         self.worker = worker
 
     def test_success(self):
         """TODO: to be defined1. """
-        queue = SimpleQueue()
-        termination = mp.Event()
-        self.executor = Executor(self.worker,
-                                 args=(queue, termination))
+        self.executor = Executor(self.worker)
         self.executor.start()
         self.executor.join()
         self.assertTrue(self.executor.success)
