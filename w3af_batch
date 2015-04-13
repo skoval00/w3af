@@ -103,6 +103,10 @@ def main():
 
     args = _process_arguments()
     _configure_logging(args.logconfig)
+    # FIXME: Remove compulsory report_queue argument
+    report_queue = mp.Queue()
+    run_starter(run_worker, report_queue=report_queue, job=W3afJob,
+	        profile=args.profile, target=args.targets.next().rstrip())
 
 
 if __name__ == '__main__':
