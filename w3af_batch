@@ -104,7 +104,6 @@ def main():
 
     args = _process_arguments()
     _configure_logging(args.logconfig)
-    # FIXME: Remove compulsory report_queue argument
     run_starter(run_worker, job=W3afJob,
 	        profile=args.profile, target=args.targets.next().rstrip())
 
