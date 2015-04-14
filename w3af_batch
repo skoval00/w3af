@@ -81,16 +81,12 @@ class W3afJob(object):
         scanner.target.set_options(option_list)
         scanner.plugins.init_plugins()
 	self.scanner = scanner
-	self.running = False
 
     def start(self):
-	self.running = True
 	self.scanner.start()
-	self.running = False
 
     def stop(self):
-        if self.running or scanner.status.is_running():
-	    self.scanner.stop()
+	self.scanner.stop()
 
 
 def main():
