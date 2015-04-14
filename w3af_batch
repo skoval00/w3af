@@ -34,8 +34,19 @@ def _process_arguments():
 
 def _configure_logging(logconfig):
     if logconfig is not None:
-	from logging.config import fileConfig
-	fileConfig(logconfig, disable_existing_loggers=False)
+        from logging.config import fileConfig
+        fileConfig(logconfig, disable_existing_loggers=False)
+
+
+def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):
+    pool = mpd.Pool(workers)
+    if report_queue is not None:
+        kwargs['report_queue'] = report_queue
+    for line in targets:
+        target = line.rstrip()
+        pool.apply_async(
+            run_starter, args=(run_worker,),
+            kwds=kwargs)
 
 
 def _stop_worker_job(job):

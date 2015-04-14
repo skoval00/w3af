@@ -2,12 +2,14 @@
 import unittest
 from functools import partial
 from time import time
+from StringIO import StringIO
+from Queue import Empty as EmptyQueue
 from multiprocessing import Queue
 from threading import Event
 from threading import Timer
 from w3af_batch import run_starter
 from w3af_batch import run_worker
-from w3af_batch import _configure_logging
+from w3af_batch import run_pool
 
 
 class Job(object):
@@ -78,3 +80,25 @@ class StarterTest(unittest.TestCase):
             execution_time=execution_time, timeout=timeout,
             wait_timeout=wait_timeout, ignore_stop=True)
         self.is_almost_equal(run_time, wait_timeout)
+
+
+class PoolTest(unittest.TestCase):
+    def setUp(self):
+        self.queue = Queue()
+        targets = ['https://first.com/', 'https://second.com/']
+        self.targets = StringIO('\n'.join(targets))
+        self.results = dict((t, True) for t in targets)
+
+    def test_pool_processes_all_targets(self):
+        run_pool(self.targets,
+                 report_queue=self.queue,
+                 job=Job,)
+        results = {}
+        while True:
+            try:
+                target, result = self.queue.get_nowait()
+            except EmptyQueue:
+                break
+            else:
+                results[target] = result
+        self.assertDictEqual(results, self.results)
