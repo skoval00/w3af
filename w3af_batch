@@ -42,13 +42,14 @@ def _stop_worker_job(job):
     job.stop()
 
 
-def run_worker(job, report_queue, timeout=DEFAULT_TIMEOUT, **kwargs):
+def run_worker(job, report_queue=None, timeout=DEFAULT_TIMEOUT, **kwargs):
     worker_job=job(**kwargs)
     timer = th.Timer(timeout, _stop_worker_job, args=(worker_job,))
     timer.start()
     result = worker_job.start()
     timer.cancel()
-    report_queue.put(result)
+    if report_queue is not None:
+	report_queue.put(result)
 
 
 def _terminate_worker(process):
@@ -104,8 +105,7 @@ def main():
     args = _process_arguments()
     _configure_logging(args.logconfig)
     # FIXME: Remove compulsory report_queue argument
-    report_queue = mp.Queue()
-    run_starter(run_worker, report_queue=report_queue, job=W3afJob,
+    run_starter(run_worker, job=W3afJob,
 	        profile=args.profile, target=args.targets.next().rstrip())
 
 
