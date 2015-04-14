@@ -18,7 +18,7 @@ STOPSCAN = mp.Event()
 def _process_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', default=None, dest='logconfig',
-			help='config for logging module')
+                        help='config for logging module')
     parser.add_argument('-p', dest='workers', type=int,
                         default=mp.cpu_count(),
                         help='number of worker processes '
@@ -49,12 +49,12 @@ def run_worker(job, report_queue=None, timeout=DEFAULT_TIMEOUT, **kwargs):
     result = worker_job.start()
     timer.cancel()
     if report_queue is not None:
-	report_queue.put(result)
+        report_queue.put(result)
 
 
 def _terminate_worker(process):
     if process.is_alive():
-	process.terminate()
+        process.terminate()
     logging.getLogger(__name__).debug('Terminate worker')
 
 
@@ -70,9 +70,9 @@ def run_starter(worker, wait_timeout=WAIT_TIMEOUT, **kwargs):
 
 class W3afJob(object):
     def __init__(self, target, profile):
-	from w3af.core.controllers.w3afCore import w3afCore
-	from w3af.core.data.kb.knowledge_base import kb
-	from w3af.core.controllers.exceptions import BaseFrameworkException
+        from w3af.core.controllers.w3afCore import w3afCore
+        from w3af.core.data.kb.knowledge_base import kb
+        from w3af.core.controllers.exceptions import BaseFrameworkException
 
         scanner = w3afCore()
         scanner.profiles.use_profile(profile)
@@ -80,13 +80,13 @@ class W3afJob(object):
         option_list['target'].set_value(target)
         scanner.target.set_options(option_list)
         scanner.plugins.init_plugins()
-	self.scanner = scanner
+        self.scanner = scanner
 
     def start(self):
-	self.scanner.start()
+        self.scanner.start()
 
     def stop(self):
-	self.scanner.stop()
+        self.scanner.stop()
 
 
 def main():
@@ -101,7 +101,7 @@ def main():
     args = _process_arguments()
     _configure_logging(args.logconfig)
     run_starter(run_worker, job=W3afJob,
-	        profile=args.profile, target=args.targets.next().rstrip())
+                profile=args.profile, target=args.targets.next().rstrip())
 
 
 if __name__ == '__main__':
