@@ -36,7 +36,7 @@ class Job(object):
         self._execute_job(self._execution_finished)
 
     def result(self):
-        return self._execution_finished.is_set()
+        return (self._target, self._execution_finished.is_set())
 
 
 class StarterTest(unittest.TestCase):
@@ -60,7 +60,7 @@ class StarterTest(unittest.TestCase):
 
     def test_starter_calls_executor(self):
         self._run_starter()
-        self.assertEqual(self.queue.get(), True)
+        self.assertIsInstance(self.queue.get(), tuple)
 
     def test_worker_lasts_execution_time(self):
         """Test mock Job object execution time."""
