@@ -19,7 +19,7 @@ class Job(object):
         self._execution_finished = Event()
         self._ignore_stop = ignore_stop
         self._timer = Timer(execution_time, self._execute_job,
-                           args=(self._execution_finished,))
+                            args=(self._execution_finished,))
 
     @staticmethod
     def _execute_job(execution_finished):
