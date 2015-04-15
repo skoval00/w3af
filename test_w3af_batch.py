@@ -1,9 +1,10 @@
 # coding: utf-8
 import unittest
-from functools import partial
+import threading as th
 from time import time
 from StringIO import StringIO
 from Queue import Empty as EmptyQueue
+from multiprocessing import Process
 from multiprocessing import Queue
 from threading import Event
 from threading import Timer
@@ -45,6 +46,32 @@ class Job(object):
 
     def result(self):
         return (self._target, self._execution_finished.is_set())
+
+
+class WorkerTest(unittest.TestCase):
+    def setUp(self):
+        self.queue = Queue()
+        self.targets_list = ['https://first.com/', 'https://second.com/']
+        self.results = dict((t, True) for t in self.targets_list)
+
+    def test_common_queue(self):
+        """Test that two workers properly share common Queue."""
+        kwargs = {'job': Job, 'report_queue': self.queue}
+        for target in self.targets_list:
+            target_kwargs = kwargs.copy()
+            target_kwargs['target'] = target
+            process = Process(target=run_worker, kwargs=target_kwargs)
+            process.start()
+            process.join()
+        results = {}
+        while True:
+            try:
+                target, result = self.queue.get(timeout=1)
+            except EmptyQueue:
+                break
+            else:
+                results[target] = result
+        self.assertDictEqual(results, self.results)
 
 
 class StarterTest(unittest.TestCase):
@@ -91,6 +118,29 @@ class StarterTest(unittest.TestCase):
             execution_time=execution_time, timeout=timeout,
             wait_timeout=wait_timeout, ignore_stop=True)
         self.is_almost_equal(run_time, wait_timeout)
+
+    def test_common_queue(self):
+        """Test that two starters properly share common Queue."""
+        targets_list = ['https://first.com/', 'https://second.com/']
+        targets_results = dict((t, True) for t in targets_list)
+        kwargs = {'job': Job, 'report_queue': self.queue}
+        for target in targets_list:
+            target_kwargs = kwargs.copy()
+            target_kwargs['target'] = target
+            thread = th.Thread(
+                target=run_starter,
+                args=(run_worker,), kwargs=target_kwargs)
+            thread.start()
+            thread.join()
+        results = {}
+        while True:
+            try:
+                target, result = self.queue.get(timeout=1)
+            except EmptyQueue:
+                break
+            else:
+                results[target] = result
+        self.assertDictEqual(results, targets_results)
 
 
 class PoolTest(unittest.TestCase):
