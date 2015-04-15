@@ -13,7 +13,15 @@ from w3af_batch import run_pool
 
 
 class Job(object):
+    """Mock Job object."""
+
     def __init__(self, target=None, execution_time=0, ignore_stop=False):
+        """Constructor for Job.
+        
+        :param target: each job is identified by its target
+        :param execution_time: time of job execution
+        :param ignore_stop: set this to test worker process termination
+        """
         self._target = target
         self._execution_time = execution_time
         self._execution_finished = Event()
