@@ -61,10 +61,10 @@ def run_worker(job, report_queue=None, timeout=DEFAULT_TIMEOUT, **kwargs):
     worker_job=job(**kwargs)
     timer = th.Timer(timeout, _stop_worker_job, args=(worker_job,))
     timer.start()
-    result = worker_job.start()
+    worker_job.start()
     timer.cancel()
     if report_queue is not None:
-        report_queue.put(result)
+        report_queue.put(worker_job.result())
 
 
 def _terminate_worker(process):
@@ -84,11 +84,19 @@ def run_starter(worker, wait_timeout=WAIT_TIMEOUT, **kwargs):
 
 
 class W3afJob(object):
+    """Create w3afCore object and start w3af scan."""
+
     def __init__(self, target, profile):
+        """W3afJob constructor.
+
+        :param target: target URI
+        :param profile: internal w3af profile name or path to *.pw3af file
+        """
         from w3af.core.controllers.w3afCore import w3afCore
-        from w3af.core.data.kb.knowledge_base import kb
         from w3af.core.controllers.exceptions import BaseFrameworkException
 
+        self._target = target
+        self._profile = profile
         scanner = w3afCore()
         scanner.profiles.use_profile(profile)
         option_list = scanner.target.get_options()
@@ -102,6 +110,11 @@ class W3afJob(object):
 
     def stop(self):
         self.scanner.stop()
+
+    def result(self):
+        """Return result scan."""
+        from w3af.core.data.kb.knowledge_base import kb
+        return (self._target, kb.get_all_vulns())
 
 
 def main():

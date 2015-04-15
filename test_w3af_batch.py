@@ -28,13 +28,15 @@ class Job(object):
     def start(self):
         self._timer.start()
         self._timer.join()
-        return (self._target, self._execution_finished.is_set())
     
     def stop(self):
         if self._ignore_stop:
             return
         self._timer.cancel()
         self._execute_job(self._execution_finished)
+
+    def result(self):
+        return self._execution_finished.is_set()
 
 
 class StarterTest(unittest.TestCase):
