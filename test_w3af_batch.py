@@ -1,14 +1,22 @@
 # coding: utf-8
+import os
 import unittest
+import multiprocessing as mp
 from time import time
 from StringIO import StringIO
 from Queue import Empty as EmptyQueue
+from signal import SIGINT
 from multiprocessing import Queue
 from threading import Event
 from threading import Timer
+
 from w3af_batch import run_starter
 from w3af_batch import run_worker
 from w3af_batch import run_pool
+
+
+def _send_interrupt(pid):
+    os.kill(pid, SIGINT)
 
 
 class Job(object):

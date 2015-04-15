@@ -43,6 +43,10 @@ def _configure_logging(logconfig):
         fileConfig(logconfig, disable_existing_loggers=False)
 
 
+def signal_handler(*args):
+    STOPSCAN.set()
+
+
 def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):
     pool = mpd.Pool(workers)
     if report_queue is not None:
