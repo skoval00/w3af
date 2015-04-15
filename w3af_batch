@@ -49,10 +49,9 @@ def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):
         kwargs['report_queue'] = report_queue
     for line in targets:
         target = line.rstrip()
-        kwargs['target'] = target
-        pool.apply_async(
-            run_starter, args=(run_worker,),
-            kwds=kwargs)
+        target_kwargs = kwargs.copy()
+        target_kwargs['target'] = target
+        pool.apply_async(run_starter, kwds=target_kwargs)
     pool.close()
     pool.join()
 
@@ -77,9 +76,9 @@ def _terminate_worker(process):
     logging.getLogger(__name__).debug('Terminate worker')
 
 
-def run_starter(worker, wait_timeout=WAIT_TIMEOUT, **kwargs):
+def run_starter(wait_timeout=WAIT_TIMEOUT, **kwargs):
     wait_timeout = kwargs.get('timeout', DEFAULT_TIMEOUT) + wait_timeout
-    process = mp.Process(target=worker, kwargs=kwargs)
+    process = mp.Process(target=run_worker, kwargs=kwargs)
     timer = th.Timer(wait_timeout, _terminate_worker, args=(process,))
     timer.start()
     process.start()
