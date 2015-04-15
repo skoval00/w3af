@@ -58,7 +58,7 @@ class StarterTest(unittest.TestCase):
         All time periods are given in seconds.
         """
         start = time()
-        run_starter(run_worker, job=Job, report_queue=self.queue, **kwargs)
+        run_starter(job=Job, report_queue=self.queue, **kwargs)
         return time() - start
 
     def is_almost_equal(self, first, second):
