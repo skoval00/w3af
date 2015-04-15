@@ -101,11 +101,17 @@ class StarterTest(unittest.TestCase):
 
 
 class PoolTest(unittest.TestCase):
+    execution_delta = 0.3
+
     def setUp(self):
         self.queue = Queue()
         targets = ['https://first.com/', 'https://second.com/']
         self.targets = StringIO('\n'.join(targets))
         self.results = dict((t, True) for t in targets)
+
+    def is_almost_equal(self, first, second):
+        """*assertAlmostEqual* with special default delta."""
+        self.assertAlmostEqual(first, second, delta=self.execution_delta)
 
     def test_pool_processes_all_targets(self):
         run_pool(self.targets,
@@ -120,3 +126,16 @@ class PoolTest(unittest.TestCase):
             else:
                 results[target] = result
         self.assertDictEqual(results, self.results)
+
+    @unittest.skip('Later')
+    def test_interrupt_stops_execution(self):
+        process = mp.Process(target=run_pool,
+                             args=(self.targets,),
+                             kwargs={'job': Job, 'execution_time': 2})
+        start = time()
+        process.start()
+        sender = Timer(1, _send_interrupt, (process.pid,))
+        sender.start()
+        process.join()
+        sender.join()
+        self.is_almost_equal(1, time() - start)
