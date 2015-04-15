@@ -9,6 +9,7 @@ import signal
 import threading as th
 import multiprocessing as mp
 import multiprocessing.dummy as mpd
+from Queue import Empty as EmptyQueue
 
 
 DEFAULT_TIMEOUT = 300  # in seconds
@@ -135,8 +136,16 @@ def main():
 
     args = _process_arguments()
     _configure_logging(args.logconfig)
-    run_starter(run_worker, job=W3afJob,
-                profile=args.profile, target=args.targets.next().rstrip())
+    report_queue = mp.Queue()
+    run_pool(args.targets, job=W3afJob, profile=args.profile,
+             report_queue=report_queue)
+    while True:
+        try:
+            target, result = report_queue.get_nowait()
+        except EmptyQueue:
+            break
+        else:
+            _get_logger().info('%s: %s', target, result)
 
 
 if __name__ == '__main__':
