@@ -69,21 +69,29 @@ class BaseTest(unittest.TestCase):
 
 
 class WorkerTest(BaseTest):
-    def _run_object(self, object_to_run, report_queue, **kwargs):
+    test_class = Worker
+
+    def _run_helper(self, **kwargs):
         """
-        Execute object.run() with predefined arguments. Calculate run time.
+        Execute test_class.run() with predefined arguments. Calculate run time.
         All time periods are given in seconds.
         """
         start = time()
-        object_to_run().run(job=Job, report_queue=report_queue, **kwargs)
+        self.test_class.run(job=Job, report_queue=self.queue, **kwargs)
         return time() - start
 
     def test_worker_lasts_execution_time(self):
         """Test mock Job object execution time."""
         execution_time = 1
-        run_time = self._run_object(
-            Worker, self.queue, execution_time=execution_time)
+        run_time = self._run_helper(execution_time=execution_time)
         self.assertAlmostEqual(run_time, execution_time)
+
+    def test_worker_stops_after_timeout(self):
+        execution_time = 2
+        timeout = 1
+        run_time = self._run_helper(
+            execution_time=execution_time, timeout=timeout)
+        self.assertAlmostEqual(run_time, timeout)
 
 
 class StarterTest(unittest.TestCase):

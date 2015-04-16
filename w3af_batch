@@ -52,7 +52,7 @@ class Worker(object):
     """Container for Worker related functions."""
 
     @staticmethod
-    def run(job, report_queue=None, **kwargs):
+    def run(job, timeout=DEFAULT_TIMEOUT, report_queue=None, **kwargs):
 	worker_job = job(**kwargs)
 	worker_job.start()
 
