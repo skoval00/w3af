@@ -21,15 +21,12 @@ def _send_interrupt(pid):
 
 
 class Job(object):
-    """Mock Job object."""
+    """Create Job object that lasts execution_time seconds.
+
+    Do not cancel job if ignore_stop is set. It is used simulate hanging job.
+    """
 
     def __init__(self, target=None, execution_time=0, ignore_stop=False):
-        """Constructor for Job.
-        
-        :param target: each job is identified by its target
-        :param execution_time: time of job execution
-        :param ignore_stop: set this to test worker process termination
-        """
         self._target = target
         self._execution_time = execution_time
         self._execution_finished = Event()
@@ -42,20 +39,24 @@ class Job(object):
         execution_finished.set()
 
     def start(self):
+        """Start job execution."""
         self._timer.start()
         self._timer.join()
     
     def stop(self):
+        """Cancle job execution."""
         if self._ignore_stop:
             return
         self._timer.cancel()
         self._execute_job(self._execution_finished)
 
     def result(self):
+        """Return job id(target) and execution status."""
         return (self._target, self._execution_finished.is_set())
 
 
 class BaseTest(unittest.TestCase):
+    """Base class for Worker and Starter test classes."""
 
     def setUp(self):
         self.queue = Queue()
