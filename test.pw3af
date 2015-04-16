@@ -1,0 +1,6 @@
+[crawl.web_spider]
+
+[audit.xss]
+
+[output.console]
+verbose = True
