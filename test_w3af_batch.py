@@ -13,6 +13,7 @@ from threading import Timer
 from w3af_batch import run_starter
 from w3af_batch import run_worker
 from w3af_batch import run_pool
+from w3af_batch import Worker
 
 
 def _send_interrupt(pid):
@@ -52,6 +53,37 @@ class Job(object):
 
     def result(self):
         return (self._target, self._execution_finished.is_set())
+
+
+class BaseTest(unittest.TestCase):
+
+    def setUp(self):
+        self.queue = Queue()
+
+    def assertAlmostEqual(self, first, second):
+        """assertAlmostEqual with special delta.
+        
+        This delta fits our needs because we test integer periods.
+        """
+        super(BaseTest, self).assertAlmostEqual(first, second, delta=0.3)
+
+
+class WorkerTest(BaseTest):
+    def _run_object(self, object_to_run, report_queue, **kwargs):
+        """
+        Execute object.run() with predefined arguments. Calculate run time.
+        All time periods are given in seconds.
+        """
+        start = time()
+        object_to_run().run(job=Job, report_queue=report_queue, **kwargs)
+        return time() - start
+
+    def test_worker_lasts_execution_time(self):
+        """Test mock Job object execution time."""
+        execution_time = 1
+        run_time = self._run_object(
+            Worker, self.queue, execution_time=execution_time)
+        self.assertAlmostEqual(run_time, execution_time)
 
 
 class StarterTest(unittest.TestCase):

@@ -48,6 +48,16 @@ def signal_handler(*args):
     STOPSCAN.set()
 
 
+class Worker(object):
+    """Container for Worker related functions."""
+
+    @staticmethod
+    def run(job, report_queue=None, **kwargs):
+	worker_job = job(**kwargs)
+	worker_job.start()
+
+
+
 def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):
     pool = mpd.Pool(workers)
     if report_queue is not None:
