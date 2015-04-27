@@ -3,6 +3,7 @@ import os
 import unittest
 import multiprocessing as mp
 from time import time
+from time import sleep
 from StringIO import StringIO
 from Queue import Empty as EmptyQueue
 from signal import SIGINT
@@ -10,10 +11,9 @@ from multiprocessing import Queue
 from threading import Event
 from threading import Timer
 
-from w3af_batch import run_starter
-from w3af_batch import run_worker
 from w3af_batch import run_pool
 from w3af_batch import Worker
+from w3af_batch import Manager
 
 
 def _send_interrupt(pid):
@@ -61,16 +61,16 @@ class BaseTest(unittest.TestCase):
     def setUp(self):
         self.queue = Queue()
 
+    def tearDown(self):
+        """Wait for child processes and threads to finish."""
+        sleep(0.1)
+
     def assertAlmostEqual(self, first, second):
         """assertAlmostEqual with special delta.
         
         This delta fits our needs because we test integer periods.
         """
         super(BaseTest, self).assertAlmostEqual(first, second, delta=0.3)
-
-
-class WorkerTest(BaseTest):
-    test_class = Worker
 
     def _run_helper(self, **kwargs):
         """
@@ -80,6 +80,10 @@ class WorkerTest(BaseTest):
         start = time()
         self.test_class.run(job=Job, report_queue=self.queue, **kwargs)
         return time() - start
+
+
+class WorkerTest(BaseTest):
+    test_class = Worker
 
     def test_worker_lasts_execution_time(self):
         """Test mock Job object execution time."""
@@ -100,33 +104,21 @@ class WorkerTest(BaseTest):
         self.assertEqual(('target', True), self.queue.get(timeout=1))
 
 
-class StarterTest(unittest.TestCase):
-    execution_delta = 0.3
+class ManagerTest(BaseTest):
+    test_class = Manager
 
-    def setUp(self):
-        self.queue = Queue()
+    def test_manager_runs_worker(self):
+        run_time = self._run_helper(target='target')
+        self.assertEqual(('target', True), self.queue.get(timeout=1))
 
-    def _run_starter(self, **kwargs):
-        """
-        Execute run_starter with predefined arguments. Calculate run time.
-        All time periods are given in seconds.
-        """
-        start = time()
-        run_starter(job=Job, report_queue=self.queue, **kwargs)
-        return time() - start
-
-    def is_almost_equal(self, first, second):
-        """*assertAlmostEqual* with special default delta."""
-        self.assertAlmostEqual(first, second, delta=self.execution_delta)
-
-    def test_starter_terminates_worker_after_wait_timeout(self):
+    def test_manager_terminates_worker_after_wait_timeout(self):
         execution_time = 2
         timeout = 0
         wait_timeout = 1
-        run_time = self._run_starter(
+        run_time = self._run_helper(
             execution_time=execution_time, timeout=timeout,
             wait_timeout=wait_timeout, ignore_stop=True)
-        self.is_almost_equal(run_time, wait_timeout)
+        self.assertAlmostEqual(run_time, wait_timeout)
 
 
 class PoolTest(unittest.TestCase):

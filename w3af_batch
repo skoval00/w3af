@@ -73,8 +73,20 @@ class Worker(object):
 class Manager(object):
     """Container for Manager related functions."""
 
+    @staticmethod
     def run(wait_timeout=WAIT_TIMEOUT, **kwargs):
-        pass
+        wait_timeout = kwargs.get('timeout', DEFAULT_TIMEOUT) + wait_timeout
+        process = mp.Process(target=Worker.run, kwargs=kwargs)
+        timer = th.Timer(wait_timeout, _terminate_worker, args=(process,))
+        timer.start()
+        process.start()
+        process.join()
+        timer.cancel()
+
+    @staticmethod
+    def _terminate_worker(process):
+        if process.is_alive():
+            process.terminate()
 
 
 def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):
