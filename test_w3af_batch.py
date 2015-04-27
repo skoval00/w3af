@@ -14,6 +14,7 @@ from threading import Timer
 from w3af_batch import run_pool
 from w3af_batch import Worker
 from w3af_batch import Manager
+from w3af_batch import Pool
 
 
 def _send_interrupt(pid):
@@ -121,11 +122,11 @@ class ManagerTest(BaseTest):
         self.assertAlmostEqual(run_time, wait_timeout)
 
 
-class PoolTest(unittest.TestCase):
-    execution_delta = 0.3
+class PoolTest(BaseTest):
+    test_class = Pool
 
     def setUp(self):
-        self.queue = Queue()
+        super(PoolTest, self).setUp()
         targets = ['https://first.com/', 'https://second.com/']
         self.targets = StringIO('\n'.join(targets))
         self.results = dict((t, True) for t in targets)
@@ -135,9 +136,7 @@ class PoolTest(unittest.TestCase):
         self.assertAlmostEqual(first, second, delta=self.execution_delta)
 
     def test_pool_processes_all_targets(self):
-        run_pool(self.targets,
-                 report_queue=self.queue,
-                 job=Job,)
+        self._run_helper(targets=self.targets)
         results = {}
         while True:
             try:

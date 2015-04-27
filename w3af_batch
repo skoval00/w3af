@@ -89,6 +89,23 @@ class Manager(object):
             process.terminate()
 
 
+class Pool(object):
+    """Container for Pool related functions."""
+
+    @staticmethod
+    def run(targets, report_queue=None, workers=mpd.cpu_count(), **kwargs):
+        pool = mpd.Pool(workers)
+        if report_queue is not None:
+            kwargs['report_queue'] = report_queue
+        for line in targets:
+            target = line.rstrip()
+            target_kwargs = kwargs.copy()
+            target_kwargs['target'] = target
+            pool.apply_async(run_starter, kwds=target_kwargs)
+        pool.close()
+        pool.join()
+
+
 def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):
     pool = mpd.Pool(workers)
     if report_queue is not None:
