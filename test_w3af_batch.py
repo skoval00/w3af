@@ -2,6 +2,8 @@
 
 import sys
 import imp
+import multiprocessing as mp
+from multiprocessing.queues import SimpleQueue
 import unittest
 import mock
 from mock import patch
@@ -9,6 +11,7 @@ from mock import patch
 from w3af.core.controllers.exceptions import BaseFrameworkException
 from w3af_batch import execute_scan
 from w3af_batch import ScanExecutor
+from w3af_batch import Executor
 from w3af_batch import STOPSCAN
 
 
@@ -73,6 +76,22 @@ class W3afCoreStartExceptionTest(ScanExecutorBaseTest):
         attrs = {'start.side_effect': BaseFrameworkException('failure')}
         w3afCore.configure_mock(**attrs)
 
+    @unittest.skip('Later')
     def test_w3af_start_failure(self):
         self.assertTrue(self.executor.failure.wait(self.event_timeout))
         self.assertFalse(self.executor.success.is_set())
+
+
+class ExecutorTest(unittest.TestCase):
+    """Docstring for ExecutorTest. """
+    def setUp(self):
+        def worker(queue, termination):
+            queue.put(True)
+        self.worker = worker
+
+    def test_success(self):
+        """TODO: to be defined1. """
+        self.executor = Executor(self.worker)
+        self.executor.start()
+        self.executor.join()
+        self.assertTrue(self.executor.success)

@@ -9,11 +9,32 @@ import signal
 import threading as th
 import multiprocessing as mp
 import multiprocessing.dummy as mpd
+from multiprocessing.queues import SimpleQueue
 
 
 WAIT_TIMEOUT = 30  # in seconds
 STOPSCAN = mp.Event()
 logger = logging.getLogger(__name__)
+
+
+class Executor(th.Thread):
+    def __init__(self, worker, args=()):
+	super(Executor, self).__init__()
+	self.worker = worker
+	self.queue = SimpleQueue()
+	self.termination = mp.Event()
+	self.args = (self.queue, self.termination) + tuple(args)
+
+    def run(self):
+	self.process = mp.Process(target=self.worker,
+				  args=self.args)
+	self.process.start()
+	self.process.join()
+
+    @property
+    def success(self):
+	if self.process.join():
+	    return self.queue.get()
 
 
 def cancel_scan(*args):
@@ -141,7 +162,7 @@ def start_executor(target, profile, timeout):
         timer.join()
 
 
-def main(args):
+def main():
     """
     Execute w3af scans of args.targets in parallel.  A pool of manager
     threads is created. Each thread receives a target to scan. Manager
@@ -155,6 +176,20 @@ def main(args):
         """
         if STOPSCAN.wait():
             pool.terminate()
+
+    signal.signal(signal.SIGINT, cancel_scan)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', dest='workers', type=int,
+                        default=mp.cpu_count(),
+                        help='number of worker processes '
+                             '(default: number of CPUs)')
+    parser.add_argument('-t', default=300, dest='timeout', type=int,
+                        help='target scan timeout in seconds (default: 300)')
+    parser.add_argument('-P', dest='profile', required=True,
+                        help='builtin profile name or path to pw3af file')
+    parser.add_argument('targets', type=argparse.FileType(),
+                        help='path to file with list of targets')
+    parser.parse_args()
 
     logger.info('Begin scanning')
     pool = mpd.Pool(args.workers)
@@ -175,16 +210,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    signal.signal(signal.SIGINT, cancel_scan)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', dest='workers', type=int,
-                        default=mp.cpu_count(),
-                        help='number of worker processes '
-                             '(default: number of CPUs)')
-    parser.add_argument('-t', default=300, dest='timeout', type=int,
-                        help='target scan timeout in seconds (default: 300)')
-    parser.add_argument('-P', dest='profile', required=True,
-                        help='builtin profile name or path to pw3af file')
-    parser.add_argument('targets', type=argparse.FileType(),
-                        help='path to file with list of targets')
-    main(parser.parse_args())
+    main()
