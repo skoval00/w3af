@@ -129,8 +129,11 @@ class W3afJob(object):
         scanner.plugins.init_plugins()
         self.scanner = scanner
 
+        _get_logger().debug('Init scan for %s', target)
+
     def start(self):
         self.scanner.start()
+        _get_logger().debug('Start scan for %s', self._target)
 
     def stop(self):
         self.scanner.stop()
