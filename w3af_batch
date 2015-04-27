@@ -53,9 +53,28 @@ class Worker(object):
 
     @staticmethod
     def run(job, timeout=DEFAULT_TIMEOUT, report_queue=None, **kwargs):
-	worker_job = job(**kwargs)
-	worker_job.start()
+        """Call start() for job object.
 
+        After timeout seconds stop() method of job object is called.
+        """
+        worker_job = job(**kwargs)
+        timer = th.Timer(timeout, Worker._stop_job, args=(worker_job,))
+        timer.start()
+        worker_job.start()
+        timer.cancel()
+        if report_queue is not None:
+            report_queue.put(worker_job.result())
+
+    @staticmethod
+    def _stop_job(job):
+        job.stop()
+
+
+class Manager(object):
+    """Container for Manager related functions."""
+
+    def run(wait_timeout=WAIT_TIMEOUT, **kwargs):
+        pass
 
 
 def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):

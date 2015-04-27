@@ -88,11 +88,16 @@ class WorkerTest(BaseTest):
         self.assertAlmostEqual(run_time, execution_time)
 
     def test_worker_stops_after_timeout(self):
+        """Test if worker stops after timeout."""
         execution_time = 2
         timeout = 1
         run_time = self._run_helper(
             execution_time=execution_time, timeout=timeout)
         self.assertAlmostEqual(run_time, timeout)
+
+    def test_worker_sends_result(self):
+        self._run_helper(target='target')
+        self.assertEqual(('target', True), self.queue.get(timeout=1))
 
 
 class StarterTest(unittest.TestCase):
@@ -113,23 +118,6 @@ class StarterTest(unittest.TestCase):
     def is_almost_equal(self, first, second):
         """*assertAlmostEqual* with special default delta."""
         self.assertAlmostEqual(first, second, delta=self.execution_delta)
-
-    def test_starter_calls_executor(self):
-        self._run_starter()
-        self.assertIsInstance(self.queue.get(), tuple)
-
-    def test_worker_lasts_execution_time(self):
-        """Test mock Job object execution time."""
-        execution_time = 1
-        run_time = self._run_starter(execution_time=execution_time)
-        self.is_almost_equal(run_time, execution_time)
-
-    def test_worker_stops_after_timeout(self):
-        execution_time = 2
-        timeout = 1
-        run_time = self._run_starter(
-            execution_time=execution_time, timeout=timeout)
-        self.is_almost_equal(run_time, timeout)
 
     def test_starter_terminates_worker_after_wait_timeout(self):
         execution_time = 2
