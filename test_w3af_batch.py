@@ -11,7 +11,6 @@ from multiprocessing import Queue
 from threading import Event
 from threading import Timer
 
-from w3af_batch import run_pool
 from w3af_batch import Worker
 from w3af_batch import Manager
 from w3af_batch import Pool

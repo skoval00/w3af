@@ -77,7 +77,8 @@ class Manager(object):
     def run(wait_timeout=WAIT_TIMEOUT, **kwargs):
         wait_timeout = kwargs.get('timeout', DEFAULT_TIMEOUT) + wait_timeout
         process = mp.Process(target=Worker.run, kwargs=kwargs)
-        timer = th.Timer(wait_timeout, _terminate_worker, args=(process,))
+        timer = th.Timer(
+            wait_timeout, Manager._terminate_worker, args=(process,))
         timer.start()
         process.start()
         process.join()
@@ -101,52 +102,9 @@ class Pool(object):
             target = line.rstrip()
             target_kwargs = kwargs.copy()
             target_kwargs['target'] = target
-            pool.apply_async(run_starter, kwds=target_kwargs)
+            pool.apply_async(Manager.run, kwds=target_kwargs)
         pool.close()
         pool.join()
-
-
-def run_pool(targets, workers=mpd.cpu_count(), report_queue=None, **kwargs):
-    pool = mpd.Pool(workers)
-    if report_queue is not None:
-        kwargs['report_queue'] = report_queue
-    for line in targets:
-        target = line.rstrip()
-        target_kwargs = kwargs.copy()
-        target_kwargs['target'] = target
-        pool.apply_async(run_starter, kwds=target_kwargs)
-    pool.close()
-    pool.join()
-
-
-def _stop_worker_job(job):
-    job.stop()
-
-
-def run_worker(job, report_queue=None, timeout=DEFAULT_TIMEOUT, **kwargs):
-    worker_job=job(**kwargs)
-    timer = th.Timer(timeout, _stop_worker_job, args=(worker_job,))
-    timer.start()
-    worker_job.start()
-    timer.cancel()
-    if report_queue is not None:
-        report_queue.put(worker_job.result())
-
-
-def _terminate_worker(process):
-    if process.is_alive():
-        process.terminate()
-    logging.getLogger(__name__).debug('Terminate worker')
-
-
-def run_starter(wait_timeout=WAIT_TIMEOUT, **kwargs):
-    wait_timeout = kwargs.get('timeout', DEFAULT_TIMEOUT) + wait_timeout
-    process = mp.Process(target=run_worker, kwargs=kwargs)
-    timer = th.Timer(wait_timeout, _terminate_worker, args=(process,))
-    timer.start()
-    process.start()
-    process.join()
-    timer.cancel()
 
 
 class W3afJob(object):
@@ -195,7 +153,7 @@ def main():
     args = _process_arguments()
     _configure_logging(args.logconfig)
     report_queue = mp.Queue()
-    run_pool(args.targets, job=W3afJob, profile=args.profile,
+    Pool.run(targets=args.targets, job=W3afJob, profile=args.profile,
              report_queue=report_queue)
     while True:
         try:
