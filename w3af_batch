@@ -25,7 +25,7 @@ def _process_arguments():
                         default=mp.cpu_count(),
                         help='number of worker processes '
                              '(default: number of CPUs)')
-    parser.add_argument('-t', default=300, dest='timeout', type=int,
+    parser.add_argument('-t', default=DEFAULT_TIMEOUT, dest='timeout', type=int,
                         help='target scan timeout in seconds (default: 300)')
     parser.add_argument('-P', dest='profile', required=True,
                         help='builtin profile name or path to pw3af file')
@@ -157,7 +157,7 @@ def main():
     _configure_logging(args.logconfig)
     report_queue = mp.Queue()
     Pool.run(targets=args.targets, job=W3afJob, profile=args.profile,
-             report_queue=report_queue)
+             timeout=args.timeout, report_queue=report_queue)
     while True:
         try:
             target, result = report_queue.get_nowait()
