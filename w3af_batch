@@ -44,10 +44,6 @@ def _configure_logging(logconfig):
         fileConfig(logconfig, disable_existing_loggers=False)
 
 
-def signal_handler(*args):
-    STOPSCAN.set()
-
-
 class Worker(object):
     """Container for Worker related functions."""
 
@@ -95,7 +91,11 @@ class Pool(object):
 
     @staticmethod
     def run(targets, report_queue=None, workers=mpd.cpu_count(), **kwargs):
+        signal.signal(signal.SIGINT, Pool._signal_handler)
         pool = mpd.Pool(workers)
+        finished = th.Event()
+        stopper = th.Thread(target=Pool._stopper, args=(pool, finished))
+        stopper.start()
         if report_queue is not None:
             kwargs['report_queue'] = report_queue
         for line in targets:
@@ -105,6 +105,20 @@ class Pool(object):
             pool.apply_async(Manager.run, kwds=target_kwargs)
         pool.close()
         pool.join()
+        finished.set()
+        stopper.join()
+
+    @staticmethod
+    def _stopper(pool, finished):
+        while True:
+            if finished.wait(0.1):
+                break
+            if STOPSCAN.is_set():
+                pool.terminate()
+
+    @staticmethod
+    def _signal_handler(*args):
+        STOPSCAN.set()
 
 
 class W3afJob(object):

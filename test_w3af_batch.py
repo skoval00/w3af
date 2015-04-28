@@ -146,9 +146,8 @@ class PoolTest(BaseTest):
                 results[target] = result
         self.assertDictEqual(results, self.results)
 
-    @unittest.skip('Later')
     def test_interrupt_stops_execution(self):
-        process = mp.Process(target=run_pool,
+        process = mp.Process(target=Pool.run,
                              args=(self.targets,),
                              kwargs={'job': Job, 'execution_time': 2})
         start = time()
@@ -157,4 +156,4 @@ class PoolTest(BaseTest):
         sender.start()
         process.join()
         sender.join()
-        self.is_almost_equal(1, time() - start)
+        self.assertAlmostEqual(1, time() - start)
