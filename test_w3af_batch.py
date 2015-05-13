@@ -17,6 +17,7 @@ from w3af_batch import Pool
 
 
 def _send_interrupt(pid):
+    print time(), "Send signal to", pid
     os.kill(pid, SIGINT)
 
 

@@ -11,6 +11,8 @@ import multiprocessing as mp
 import multiprocessing.dummy as mpd
 from Queue import Empty as EmptyQueue
 
+import time
+
 
 DEFAULT_TIMEOUT = 300  # in seconds
 WAIT_TIMEOUT = 30      # in seconds
@@ -73,17 +75,30 @@ class Manager(object):
     def run(wait_timeout=WAIT_TIMEOUT, **kwargs):
         wait_timeout = kwargs.get('timeout', DEFAULT_TIMEOUT) + wait_timeout
         process = mp.Process(target=Worker.run, kwargs=kwargs)
+        finished = th.Event()
+        stopper = th.Thread(target=Manager._stopper, args=(process, finished))
+        stopper.start()
         timer = th.Timer(
             wait_timeout, Manager._terminate_worker, args=(process,))
         timer.start()
         process.start()
         process.join()
+        finished.set()
+        stopper.join()
         timer.cancel()
 
     @staticmethod
     def _terminate_worker(process):
         if process.is_alive():
             process.terminate()
+
+    @staticmethod
+    def _stopper(subject, finished):
+        while True:
+            if finished.wait(0.2):
+                break
+            if STOPSCAN.is_set():
+                subject.terminate()
 
 
 class Pool(object):
@@ -118,6 +133,7 @@ class Pool(object):
 
     @staticmethod
     def _signal_handler(*args):
+        print time.time(), "Caught signal"
         STOPSCAN.set()
 
 
