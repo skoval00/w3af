@@ -47,15 +47,15 @@ class SGMLParser(BaseParser):
         '([\w\.%-]{1,45}@([A-Z0-9\.-]{1,45}\.){1,10}[A-Z]{2,4})',
         re.I | re.U)
 
+    META_URL_REDIR_RE = re.compile('.*?URL.*?=(.*)', re.I | re.U)
+
     TAGS_WITH_URLS = {
         'go', 'a', 'anchor', 'img', 'link', 'script', 'iframe', 'object',
         'embed', 'area', 'frame', 'applet', 'input', 'base', 'div', 'layer',
         'form', 'ilayer', 'bgsound', 'html', 'audio', 'video'
     }
 
-    TAGS_WITH_MAILTO = {'a'}
-
-    URL_ATTRS = {'href', 'src', 'data', 'action', 'manifest'}
+    URL_ATTRS = {'href', 'src', 'data', 'action', 'manifest', 'link', 'uri'}
 
     # I don't want to inject into Apache's directory indexing parameters
     APACHE_INDEXING = {"?C=N;O=A", "?C=M;O=A", "?C=S;O=A", "?C=D;O=D",
@@ -71,9 +71,7 @@ class SGMLParser(BaseParser):
         self._inside_textarea = False
         self._inside_script = False
 
-        # Internal containers
         self._tag_and_url = set()
-        self._parsed_urls = set()
         self._forms = []
         self._comments_in_doc = []
         self._meta_redirs = []
@@ -83,9 +81,22 @@ class SGMLParser(BaseParser):
         # Parse!
         self._parse(http_resp)
 
+    def clear(self):
+        # Internal containers
+        self._tag_and_url.clear()
+        self._forms = []
+        self._comments_in_doc = []
+        self._meta_redirs = []
+        self._meta_tags = []
+        self._emails.clear()
+
+        if self._dom is not None:
+            self._dom.clear()
+            self._dom = None
+
     def _handle_exception(self, where, ex):
-        msg = 'An exception occurred while %s: "%s"' % (where, ex)
-        om.out.error(msg)
+        msg = 'An exception occurred while %s: "%s"'
+        om.out.error(msg % (where, ex))
         om.out.error('Error traceback: %s' % traceback.format_exc())
 
     def start(self, tag, attrs):
@@ -112,7 +123,10 @@ class SGMLParser(BaseParser):
             self._handle_exception('extracting references', ex)
 
         try:
-            if tag in self.TAGS_WITH_MAILTO:
+            # Before I defined TAGS_WITH_MAILTO = {'a'} at the class level, but
+            # since it had only one item, and this doesn't change often (ever?)
+            # changed it to this for performance
+            if tag == 'a':
                 self._find_emails(tag, attrs)
         except Exception, ex:
             self._handle_exception('finding emails', ex)
@@ -296,7 +310,6 @@ class SGMLParser(BaseParser):
                 # url.normalize_url()
 
                 # Save url
-                self._parsed_urls.add(url)
                 self._tag_and_url.add((tag, url))
 
     def _fill_forms(self, tag, attrs):
@@ -323,7 +336,7 @@ class SGMLParser(BaseParser):
         other with the URLs that came out from a regular expression. The
         second list is less trustworthy.
         """
-        return list(self._parsed_urls), []
+        return [url for tag, url in self._tag_and_url], []
 
     def get_references(self):
         return self.references
@@ -407,11 +420,10 @@ class SGMLParser(BaseParser):
             #   "4;URL=http://www.f00.us/"
             #   "2; URL=http://www.f00.us/"
             #   "6  ; URL=http://www.f00.us/"
-            for urlstr in re.findall('.*?URL.*?=(.*)', content, re.IGNORECASE):
+            for urlstr in self.META_URL_REDIR_RE.findall(content):
                 urlstr = self._decode_url(urlstr.strip())
                 url = unicode(self._base_url.url_join(urlstr))
                 url = URL(url, encoding=self._encoding)
-                self._parsed_urls.add(url)
                 self._tag_and_url.add(('meta', url))
 
     def _handle_form_tag_start(self, tag, attrs):
