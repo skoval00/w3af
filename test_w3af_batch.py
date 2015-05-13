@@ -44,7 +44,7 @@ class Job(object):
         self._timer.join()
     
     def stop(self):
-        """Cancle job execution."""
+        """Cancel job execution."""
         if self._ignore_stop:
             return
         self._timer.cancel()
