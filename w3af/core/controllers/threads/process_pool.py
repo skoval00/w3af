@@ -1,10 +1,11 @@
 import os
 import threading
 
-from multiprocessing.pool import Pool, RUN, cpu_count, Finalize
+from multiprocessing.pool import cpu_count, Finalize
 from multiprocessing.process import Process, _cleanup, current_process
 
-from w3af.core.controllers.threads.silent_joinable_queue import SilentJoinableQueue
+from .silent_joinable_queue import SilentJoinableQueue
+from .pool276 import Pool, RUN
 
 
 class SubDaemonProcess(Process):
@@ -76,7 +77,8 @@ class ProcessPool(Pool):
 
         self._worker_handler = threading.Thread(
             target=Pool._handle_workers,
-            args=(self, )
+            args=(self, ),
+            name='PoolWorkerHandler'
             )
         self._worker_handler.daemon = True
         self._worker_handler._state = RUN
@@ -85,16 +87,16 @@ class ProcessPool(Pool):
         self._task_handler = threading.Thread(
             target=Pool._handle_tasks,
             args=(self._taskqueue, self._quick_put, self._outqueue,
-                  self._pool, self._cache)
-            )
+                  self._pool, self._cache),
+            name='PoolTaskHandler')
         self._task_handler.daemon = True
         self._task_handler._state = RUN
         self._task_handler.start()
 
         self._result_handler = threading.Thread(
             target=Pool._handle_results,
-            args=(self._outqueue, self._quick_get, self._cache)
-            )
+            args=(self._outqueue, self._quick_get, self._cache),
+            name='PoolResultHandler')
         self._result_handler.daemon = True
         self._result_handler._state = RUN
         self._result_handler.start()
@@ -104,5 +106,4 @@ class ProcessPool(Pool):
             args=(self._taskqueue, self._inqueue, self._outqueue, self._pool,
                   self._worker_handler, self._task_handler,
                   self._result_handler, self._cache),
-            exitpriority=15
-            )
+            exitpriority=15)

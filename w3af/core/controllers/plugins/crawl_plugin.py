@@ -19,14 +19,14 @@ along with w3af; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-import copy
-
 from stopit import ThreadingTimeout, TimeoutException
 
 from w3af.core.data.request.fuzzable_request import FuzzableRequest
+from w3af.core.controllers.misc.safe_deepcopy import safe_deepcopy
 from w3af.core.controllers.plugins.plugin import Plugin
-from w3af.core.controllers.exceptions import BaseFrameworkException
 from w3af.core.controllers.core_helpers.fingerprint_404 import is_404
+from w3af.core.controllers.exceptions import (BaseFrameworkException,
+                                              FourOhFourDetectionException)
 
 import w3af.core.controllers.output_manager as om
 
@@ -52,12 +52,19 @@ class CrawlPlugin(Plugin):
         # I copy the fuzzable request, to avoid cross plugin contamination
         # in other words, if one plugin modified the fuzzable request object
         # INSIDE that plugin, I don't want the next plugin to suffer from that
-        fuzzable_request_copy = copy.deepcopy(fuzzable_request)
+        fuzzable_request_copy = safe_deepcopy(fuzzable_request)
 
         # Crawl with timeout
         try:
             with ThreadingTimeout(self.PLUGIN_TIMEOUT, swallow_exc=False):
                 return self.crawl(fuzzable_request_copy)
+        except FourOhFourDetectionException, ffde:
+            # We simply ignore any exceptions we find during the 404 detection
+            # process. FYI: This doesn't break the xurllib error handling which
+            # happens at lower layers.
+            #
+            # https://github.com/andresriancho/w3af/issues/8949
+            om.out.debug('%s' % ffde)
         except TimeoutException:
             msg = '[timeout] The "%s" plugin took more than %s seconds to'\
                   ' complete the crawling of "%s", killing it!'

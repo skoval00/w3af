@@ -22,13 +22,16 @@ import gtk
 import gobject
 import Queue
 
+from collections import namedtuple
+
 import w3af.core.data.kb.knowledge_base as kb
+
 from w3af.core.data.kb.vuln import Vuln
 from w3af.core.data.kb.info import Info
-
+from w3af.core.data.kb.kb_observer import KBObserver
+from w3af.core.data.misc.encoding import smart_str
 from w3af.core.ui.gui import helpers
 from w3af.core.ui.gui.tabs.exploit.exploit_all import effectively_exploit_all
-from collections import namedtuple
 
 TYPES_OBJ = {
     Vuln: "vuln",
@@ -121,7 +124,7 @@ class KBTree(gtk.TreeView):
         self.connect("query-tooltip", self._show_tooltips)
 
         # make sure we update the knowledge base view
-        kb.kb.add_observer(None, None, self._receive_kb_items)
+        kb.kb.add_observer(VulnerabilityObserver(self))
         gobject.timeout_add(100, self._update_tree().next)
         self.postcheck = False
             
@@ -159,42 +162,6 @@ class KBTree(gtk.TreeView):
         """
         self.filter = active
         self.need_complete_tree_update = True
-    
-    def _receive_kb_items(self, location_a, location_b, info_inst):
-        """
-        Gets called by the KB when one of the plugins writes something to it.
-        
-        We've subscribed using kb.kb.add_observer(None, None, ...) so we'll
-        get all changes.
-        
-        :return: None, the information we'll show to the user is stored in an
-                 internal variable.
-        """
-        if not isinstance(info_inst, Info):
-            return
-        
-        obj_name = info_inst.get_name()
-        obj_severity = info_inst.get_severity()
-        
-        obj_type = TYPES_OBJ.get(type(info_inst))
-        color_tuple = (obj_type, obj_severity)
-        color_level = helpers.KB_COLOR_LEVEL.get(color_tuple, 0)
-        
-        # Note that I can't use id(instance) here since the
-        # instances that come here are created from the SQLite DB
-        # and have different instances, even though they hold the
-        # same information.
-        idinstance = info_inst.get_uniq_id()
-        
-        vuln_id = info_inst.get_id()
-        
-        InfoData = namedtuple('InfoData', 'location_a location_b obj_name'\
-                                          ' obj_type color_level idinstance'\
-                                          ' severity vuln_id')
-        data = InfoData(location_a, location_b, obj_name, obj_type, color_level,
-                        idinstance, obj_severity, vuln_id)
-        
-        self.pending_insert.put(data)
         
     def _update_tree(self):
         """Updates the GUI with the KB.
@@ -244,14 +211,16 @@ class KBTree(gtk.TreeView):
         
         :param data: The data for the new item to add.
         """
-        contains_location_a = [r for r in self.treestore if \
+        contains_location_a = [r for r in self.treestore if
                                r[1] == data.location_a]
         
         if not contains_location_a:
             # Add the new data to the treestore
             child_count = '( 1 )'
             color = helpers.KB_COLORS[data.color_level]
-            store_iter = self.treestore.append(None, [None, data.location_a,
+            location_a = smart_str(data.location_a, errors='ignore')
+            store_iter = self.treestore.append(None, [None,
+                                                      location_a,
                                                       0, None, 0,
                                                       color,
                                                       child_count])
@@ -287,12 +256,12 @@ class KBTree(gtk.TreeView):
         Update the child count, keep in mind that the child count for this
         level is increased by each call to this method.
         """
-        location_a = [r for r in self.treestore if \
+        location_a = [r for r in self.treestore if
                       r[1] == data.location_a]
         assert len(location_a), 1
         location_a_row = location_a[0]
         
-        contains_location_ab = [r for r in location_a_row.iterchildren() if \
+        contains_location_ab = [r for r in location_a_row.iterchildren() if
                                 r[1] == data.location_b]
         
         if not contains_location_ab:
@@ -515,3 +484,43 @@ class KBTree(gtk.TreeView):
 
     def _get_exploits(self, vuln_id):
         return self.exploit_vulns.get(str(vuln_id))
+
+
+class VulnerabilityObserver(KBObserver):
+    def __init__(self, kb_tree):
+        self.kb_tree = kb_tree
+
+    def append(self, location_a, location_b, info_inst, ignore_type=False):
+        """
+        Gets called by the KB when one of the plugins writes something to it.
+
+        We've subscribed using kb.kb.add_observer()
+
+        :return: None, the information we'll show to the user is stored in an
+                 internal variable.
+        """
+        if not isinstance(info_inst, Info):
+            return
+
+        obj_name = info_inst.get_name()
+        obj_severity = info_inst.get_severity()
+
+        obj_type = TYPES_OBJ.get(type(info_inst))
+        color_tuple = (obj_type, obj_severity)
+        color_level = helpers.KB_COLOR_LEVEL.get(color_tuple, 0)
+
+        # Note that I can't use id(instance) here since the
+        # instances that come here are created from the SQLite DB
+        # and have different instances, even though they hold the
+        # same information.
+        idinstance = info_inst.get_uniq_id()
+
+        vuln_id = info_inst.get_id()
+
+        InfoData = namedtuple('InfoData', 'location_a location_b obj_name'
+                                          ' obj_type color_level idinstance'
+                                          ' severity vuln_id')
+        data = InfoData(location_a, location_b, obj_name, obj_type, color_level,
+                        idinstance, obj_severity, vuln_id)
+
+        self.kb_tree.pending_insert.put(data)

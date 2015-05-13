@@ -19,9 +19,10 @@ along with w3af; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 """
-import Queue
 import re
+import sys
 import time
+import Queue
 import traceback
 
 import w3af.core.controllers.output_manager as om
@@ -72,7 +73,7 @@ class w3afLocalProxyHandler(w3afProxyHandler):
         # Add it to the request queue, and wait for the user to edit the
         # request...
         self.server.w3afLayer.request_queue.put(fuzzable_request)
-        edited_requests = self.server.w3afLayer._edited_requests
+        edited_requests = self.server.w3afLayer.edited_requests
         
         while True:
             
@@ -107,8 +108,8 @@ class w3afLocalProxyHandler(w3afProxyHandler):
 
                 try:
                     res = self._uri_opener.send_raw_request(head, body)
-                except Exception, e:
-                    res = e
+                except Exception:
+                    res = sys.exc_info()
 
                 # Save it so the upper layer can read this response.
                 fr_id = id(fuzzable_request)
@@ -184,20 +185,15 @@ class LocalProxy(Proxy):
         :param port: Port to bind
         :param url_opener: The urlOpener that will be used to open the requests
                           that arrive from the browser
-        :param proxyHandler: A class that will know how to handle requests
-                             from the browser
         :param proxy_cert: Proxy certificate to use, this is needed for
                            proxying SSL connections.
         """
         Proxy.__init__(self, ip, port, url_opener, w3afLocalProxyHandler,
-                       proxy_cert)
-
-        self.daemon = True
-        self.name = 'LocalProxyThread'
+                       proxy_cert, name='LocalProxyThread')
 
         # Internal vars
         self.request_queue = Queue.Queue()
-        self._edited_requests = {}
+        self.edited_requests = {}
         self.edited_responses = {}
 
         # User configured parameters
@@ -259,12 +255,12 @@ class LocalProxy(Proxy):
 
     def drop_request(self, orig_fuzzable_req):
         """Let the handler know that the request was dropped."""
-        self._edited_requests[id(orig_fuzzable_req)] = (None, None)
+        self.edited_requests[id(orig_fuzzable_req)] = (None, None)
 
     def send_raw_request(self, orig_fuzzable_req, head, postdata):
         # the handler is polling this dict and will extract the information
         # from it and then send it to the remote web server
-        self._edited_requests[id(orig_fuzzable_req)] = (head, postdata)
+        self.edited_requests[id(orig_fuzzable_req)] = (head, postdata)
 
         # Loop until I get the data from the remote web server
         for i in xrange(60):
@@ -272,13 +268,14 @@ class LocalProxy(Proxy):
             if id(orig_fuzzable_req) in self.edited_responses:
                 res = self.edited_responses[id(orig_fuzzable_req)]
                 del self.edited_responses[id(orig_fuzzable_req)]
+
                 # Now we return it...
-                if isinstance(res, Exception):
-                    raise res
+                if isinstance(res, tuple) and isinstance(res[0], Exception):
+                    exception, value, _traceback = res
+                    raise exception, value, _traceback
                 else:
                     return res
 
         # I looped and got nothing!
         msg = 'Timed out waiting for response from remote server.'
         raise BaseFrameworkException(msg)
-
