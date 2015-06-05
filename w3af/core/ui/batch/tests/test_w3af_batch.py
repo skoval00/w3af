@@ -157,10 +157,6 @@ class PoolTest(BaseTest):
         self.targets = StringIO('\n'.join(targets))
         self.results = dict((t, True) for t in targets)
 
-    def is_almost_equal(self, first, second):
-        """*assertAlmostEqual* with special default delta."""
-        self.assertAlmostEqual(first, second, delta=self.execution_delta)
-
     def test_pool_processes_all_targets(self):
         self._run_helper(targets=self.targets)
         results = {}
