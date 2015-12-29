@@ -101,16 +101,16 @@ class BaseTest(unittest.TestCase):
 
     def _run_helper(self, **kwargs):
         """
-        Execute test_class.run() with predefined arguments. Calculate run time.
+        Execute tested_class.run() with predefined arguments. Calculate run time.
         All time periods are given in seconds.
         """
         start = time()
-        self.test_class.run(job=Job, report_queue=self.queue, **kwargs)
+        self.tested_class.run(job=Job, report_queue=self.queue, **kwargs)
         return time() - start
 
 
 class WorkerTest(BaseTest):
-    test_class = Worker
+    tested_class = Worker
 
     def test_worker_lasts_execution_time(self):
         """Test mock Job object execution time."""
@@ -132,7 +132,7 @@ class WorkerTest(BaseTest):
 
 
 class ManagerTest(BaseTest):
-    test_class = Manager
+    tested_class = Manager
 
     def test_manager_runs_worker(self):
         run_time = self._run_helper(target='target')
@@ -149,7 +149,7 @@ class ManagerTest(BaseTest):
 
 
 class PoolTest(BaseTest):
-    test_class = Pool
+    tested_class = Pool
 
     def setUp(self):
         super(PoolTest, self).setUp()
