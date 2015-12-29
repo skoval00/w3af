@@ -30,7 +30,6 @@ import multiprocessing as mp
 import multiprocessing.dummy as mpd
 
 from Queue import Empty as EmptyQueue
-from w3af.core.controllers.dependency_check.dependency_check import dependency_check
 
 
 DEFAULT_TIMEOUT = 300  # in seconds
@@ -207,8 +206,6 @@ def main():
 
     :author: https://github.com/skoval00
     """
-    # Check if I have all needed dependencies
-    dependency_check()
 
     args = _process_arguments()
     _configure_logging(args.logconfig)
