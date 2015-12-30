@@ -134,16 +134,21 @@ class Pool(object):
         if report_queue is not None:
             kwargs['report_queue'] = report_queue
         
-        for line in targets:
-            target = line.rstrip()
-            target_kwargs = kwargs.copy()
-            target_kwargs['target'] = target
+        for target_kwargs in Pool._get_target_kwargs(targets, kwargs):
             pool.apply_async(Manager.run, kwds=target_kwargs)
         
         pool.close()
         pool.join()
         finished.set()
         stopper.join()
+
+    @staticmethod
+    def _get_target_kwargs(targets, kwargs):
+        for line in targets:
+            target = line.rstrip()
+            target_kwargs = kwargs.copy()
+            target_kwargs['target'] = target
+            yield target_kwargs
 
     @staticmethod
     def _stopper(pool, finished):
