@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 import logging
 import argparse
 import signal
-import time
 import threading as th
 import multiprocessing as mp
 import multiprocessing.dummy as mpd
