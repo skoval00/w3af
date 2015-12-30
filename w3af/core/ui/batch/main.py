@@ -93,7 +93,8 @@ class Manager(object):
     @staticmethod
     def run(wait_timeout=WAIT_TIMEOUT, **kwargs):
         wait_timeout = kwargs.get('timeout', DEFAULT_TIMEOUT) + wait_timeout
-        process = mp.Process(target=Worker.run, kwargs=kwargs)
+        process = mp.Process(
+            target=Worker.run, name='MainProcess', kwargs=kwargs)
         finished = th.Event()
         stopper = th.Thread(target=Manager._stopper, args=(process, finished))
         stopper.start()
